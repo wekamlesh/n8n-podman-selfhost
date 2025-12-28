@@ -1,6 +1,6 @@
-# Pikachu n8n (Podman, rootless) + Postgres + Redis + Traefik (Let's Encrypt)
+# Pikachu n8n (Podman, rootless) + Postgres + Redis + Caddy (Let's Encrypt)
 
-Production-grade n8n automation platform running on rootless Podman with automatic SSL certificates, encrypted backups, and systemd integration.
+Production-grade n8n automation platform running on rootless Podman with automatic SSL certificates, encrypted backups, and simple Caddy reverse-proxying.
 
 ---
 
@@ -14,40 +14,32 @@ First, determine your user ID and configure it in `.env`:
 # Get your user ID
 id -u
 
-# Edit .env and set PODMAN_UID to the value above
+# Edit .env and set PODMAN_UID (and other values) to the value above
+cp .env.example .env
 nano .env
 ```
 
 **Example `.env` snippet:**
 ```bash
 PODMAN_UID=1000  # Replace with your actual UID
+N8N_ENCRYPTION_KEY=generate-a-long-random-secret
+POSTGRES_PASSWORD=strong-db-password
+BACKUP_PASSPHRASE=strong-backup-passphrase
+RCLONE_REMOTE=pcloud-crypt
+RCLONE_REMOTE_PATH=backups/n8n
+# Set VOL_TRAEFIK_ACME to your Caddy data volume so certs are backed up:
+VOL_TRAEFIK_ACME=pikachu_caddy_data
 ```
 
-### 2. Configure Secrets
+### 2. Protect Your .env
 
-Create and secure your secrets file:
+All secrets live in `.env`. Lock it down:
 
 ```bash
-# Set strict permissions on secrets file
-chmod 600 .env.secrets
-
-# Edit secrets file
-nano .env.secrets
+chmod 600 .env
 ```
 
-**⚠️ Critical:** Ensure `N8N_ENCRYPTION_KEY` is:
-- Long (32+ characters)
-- Randomly generated
-- Stored safely forever (losing this key means losing encrypted workflow credentials)
-
-**Example `.env.secrets`:**
-```bash
-N8N_ENCRYPTION_KEY=your-very-long-random-encryption-key-here
-POSTGRES_PASSWORD=your-secure-postgres-password
-N8N_DB_PASSWORD=your-secure-n8n-db-password
-REDIS_PASSWORD=your-secure-redis-password
-TRAEFIK_DASHBOARD_PASSWORD=your-bcrypt-hashed-password
-```
+**⚠️ Critical:** Ensure `N8N_ENCRYPTION_KEY` is long, random, and stored safely forever (losing this key means losing encrypted workflow credentials).
 
 ### 3. Install Dependencies and Prepare Environment
 
@@ -57,7 +49,7 @@ cd /code/pikachu
 # Make scripts executable
 chmod +x scripts/*.sh
 
-# Run installation script (installs Podman, creates networks, etc.)
+# Run installation script (primes backups, installs helpers)
 ./scripts/install-rootless.sh
 ```
 
@@ -94,13 +86,11 @@ rclone config
 - ✅ Postgres accepting connections
 - ✅ Redis responding to PING
 - ✅ n8n web interface accessible
-- ✅ Traefik routing correctly
 
 ### 6. Access Your Services
 
-**Main Services:**
+**Main Service:**
 - **n8n Automation:** https://n8n.kamleshmerugu.me
-- **Traefik Dashboard (optional):** https://traefik.kamleshmerugu.me
 
 **First-time setup:**
 1. Navigate to https://n8n.kamleshmerugu.me
@@ -148,54 +138,6 @@ rclone ls pcloud-crypt:
 
 ---
 
-## 🔄 Systemd Integration (Auto-start on Boot)
-
-### Enable Boot Persistence
-
-Make services start automatically when the server boots:
-
-```bash
-# Create systemd user directory
-mkdir -p ~/.config/systemd/user
-
-# Copy service and timer files
-cp /code/pikachu/systemd-user/*.service ~/.config/systemd/user/
-cp /code/pikachu/systemd-user/*.timer ~/.config/systemd/user/
-
-# Reload systemd
-systemctl --user daemon-reload
-
-# Enable and start the n8n service
-systemctl --user enable --now pikachu-n8n.service
-
-# Enable and start automatic backup timer (daily backups)
-systemctl --user enable --now pikachu-n8n-backup.timer
-
-# Enable lingering (keeps user services running after logout)
-loginctl enable-linger $USER
-```
-
-### Manage Services
-
-```bash
-# Check service status
-systemctl --user status pikachu-n8n.service
-
-# View logs
-journalctl --user -u pikachu-n8n.service -f
-
-# Restart service
-systemctl --user restart pikachu-n8n.service
-
-# Stop service
-systemctl --user stop pikachu-n8n.service
-
-# Check backup timer
-systemctl --user list-timers
-```
-
----
-
 ## 🔄 Automatic Container Updates
 
 Enable automatic image updates using Podman's native auto-update feature:
@@ -230,12 +172,12 @@ cd /code/pikachu
 
 # ✅ Step 1: Set correct UID
 id -u
-# Edit .env and set PODMAN_UID to that number
+# Edit .env and set PODMAN_UID to that number (and all secrets)
+cp .env.example .env
 nano .env
 
-# ✅ Step 2: Secure secrets file
-chmod 600 .env.secrets
-nano .env.secrets  # Add all required secrets
+# ✅ Step 2: Secure .env (contains secrets)
+chmod 600 .env
 
 # ✅ Step 3: Install and prepare environment
 ./scripts/install-rootless.sh
@@ -249,21 +191,13 @@ rclone config
 # ✅ Step 6: Verify everything works
 ./scripts/verify.sh
 
-# ✅ Step 7: Enable systemd services
-mkdir -p ~/.config/systemd/user
-cp systemd-user/*.{service,timer} ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now pikachu-n8n.service
-systemctl --user enable --now pikachu-n8n-backup.timer
-loginctl enable-linger $USER
-
-# ✅ Step 8: Enable auto-updates
+# ✅ Step 7: Enable auto-updates (optional)
 systemctl --user enable --now podman-auto-update.timer
 
-# ✅ Step 9: Test backup
+# ✅ Step 8: Test backup
 ./scripts/backup.sh
 
-# ✅ Step 10: Access your n8n instance
+# ✅ Step 9: Access your n8n instance
 echo "Visit: https://n8n.kamleshmerugu.me"
 ```
 
@@ -273,11 +207,10 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 
 ```
 /code/pikachu/
-├── README.md                    # This file
-├── .env                         # Public configuration (UID, domains, etc.)
-├── .env.secrets                 # Sensitive credentials (chmod 600)
-├── compose.yaml                 # Podman Compose definition
-├── Containerfile.n8n            # Custom n8n image (optional)
+├── README                       # This file
+├── .env                         # Configuration + secrets (chmod 600)
+├── podman-compose.yml           # Podman Compose definition
+├── Caddyfile                    # Caddy reverse proxy + TLS
 ├── scripts/
 │   ├── install-rootless.sh      # Initial setup script
 │   ├── up.sh                    # Start all containers
@@ -285,14 +218,10 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 │   ├── verify.sh                # Health check script
 │   ├── backup.sh                # Backup script
 │   └── restore.sh               # Restore script
-├── systemd-user/
-│   ├── pikachu-n8n.service      # Main service unit
-│   └── pikachu-n8n-backup.timer # Backup timer unit
 ├── data/                        # Container volumes (auto-created)
 │   ├── n8n/
 │   ├── postgres/
-│   ├── redis/
-│   └── traefik/
+│   └── redis/
 └── backups/                     # Local backup staging (auto-created)
 ```
 
@@ -306,7 +235,7 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 # Check container logs
 podman logs pikachu-n8n
 podman logs pikachu-postgres
-podman logs pikachu-traefik
+podman logs pikachu-caddy
 
 # Check if ports are already in use
 ss -tulpn | grep -E ':(80|443|5432|6379)'
@@ -318,24 +247,22 @@ podman pod ps
 ### SSL certificate issues
 
 ```bash
-# Check Traefik logs
-podman logs pikachu-traefik
+# Check Caddy logs
+podman logs pikachu-caddy
 
-# Verify DNS is pointing correctly
+# Verify DNS is pointing correctly and ports 80/443 are reachable
 dig n8n.kamleshmerugu.me
-
-# Ensure ports 80 and 443 are accessible from internet
 curl -I http://n8n.kamleshmerugu.me
 ```
 
 ### Database connection errors
 
 ```bash
-# Test Postgres connection
-podman exec -it pikachu-postgres psql -U n8n -d n8n
+# Test Postgres connection (adjust if you changed user/db)
+podman exec -it pikachu-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
 
-# Check if password matches in .env.secrets
-grep DB_PASSWORD .env.secrets
+# Check if password matches in .env
+grep POSTGRES_PASSWORD .env
 ```
 
 ### Permission denied errors
@@ -355,7 +282,7 @@ podman unshare chown -R 1000:1000 data/
 rclone ls pcloud-crypt:
 
 # Verify encryption key is correct
-grep N8N_ENCRYPTION_KEY .env.secrets
+grep N8N_ENCRYPTION_KEY .env
 
 # Check available disk space
 df -h
@@ -367,10 +294,9 @@ df -h
 
 - **Rootless Podman:** All containers run as non-root user
 - **Encrypted backups:** All backups encrypted before cloud upload
-- **Secret management:** Sensitive data in separate `.env.secrets` file
-- **HTTPS only:** Let's Encrypt certificates automatically renewed
+- **Secret management:** Sensitive data stored in `.env` (chmod 600)
+- **HTTPS only:** Let's Encrypt certificates via Caddy
 - **Network isolation:** Containers communicate via dedicated Podman network
-- **Password hashing:** Traefik dashboard uses bcrypt-hashed passwords
 
 ---
 
@@ -378,7 +304,7 @@ df -h
 
 - [n8n Documentation](https://docs.n8n.io/)
 - [Podman Documentation](https://docs.podman.io/)
-- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Caddy Documentation](https://caddyserver.com/docs/)
 - [rclone Documentation](https://rclone.org/docs/)
 
 ---

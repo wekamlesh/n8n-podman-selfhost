@@ -5,7 +5,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 set -a
 source .env
-source .env.secrets
 set +a
 
 TS="${1:-}"
@@ -33,7 +32,7 @@ echo "[3/9] Extract..."
 tar -C "${WORKDIR}" -xzf "${DECRYPTED}"
 
 echo "[4/9] Stop stack..."
-podman-compose --env-file .env --env-file .env.secrets down
+podman-compose --env-file .env down
 
 echo "[5/9] Recreate volumes (wipe old data safely)..."
 podman volume rm -f "${VOL_N8N}" "${VOL_REDIS}" "${VOL_POSTGRES}" "${VOL_TRAEFIK_ACME}" || true
@@ -48,7 +47,7 @@ podman volume import "${VOL_REDIS}" "${WORKDIR}/redis-volume.tar"
 podman volume import "${VOL_TRAEFIK_ACME}" "${WORKDIR}/traefik-acme-volume.tar"
 
 echo "[7/9] Start postgres only..."
-podman-compose --env-file .env --env-file .env.secrets up -d postgres
+podman-compose --env-file .env up -d postgres
 sleep 10
 
 echo "[8/9] Restore Postgres dump..."
@@ -63,6 +62,6 @@ podman exec -i pikachu-postgres pg_restore \
   < "${WORKDIR}/postgres.dump"
 
 echo "[9/9] Start full stack..."
-podman-compose --env-file .env --env-file .env.secrets up -d
+podman-compose --env-file .env up -d
 
 echo "Restore complete. Run: ./scripts/verify.sh"

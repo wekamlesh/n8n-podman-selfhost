@@ -5,7 +5,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 set -a
 source .env
-source .env.secrets
 set +a
 
 TS="$(date -u +"%Y%m%dT%H%M%SZ")"
