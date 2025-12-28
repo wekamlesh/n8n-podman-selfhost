@@ -1,7 +1,0 @@
-[Unit]
-Description=Pikachu n8n encrypted backup to pCloud
-
-[Service]
-Type=oneshot
-WorkingDirectory=/code/pikachu
-ExecStart=/code/pikachu/scripts/backup.sh
