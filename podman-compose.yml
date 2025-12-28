@@ -1,0 +1,129 @@
+services:
+  traefik:
+    image: ${TRAEFIK_IMAGE}
+    container_name: pikachu-traefik
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # Rootless podman socket exposed as docker.sock for Traefik provider
+      - ${PODMAN_SOCK}:/var/run/docker.sock:Z
+      # Named volume for ACME cert storage
+      - ${VOL_TRAEFIK_ACME}:/acme:Z
+    labels:
+      - "traefik.enable=true"
+
+      # Dashboard (optional): https://traefik.kamleshmerugu.me
+      - "traefik.http.routers.traefik.rule=Host(`traefik.kamleshmerugu.me`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_USERS}"
+
+      # Podman auto-update
+      - "io.containers.autoupdate=image"
+    restart: unless-stopped
+
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    container_name: pikachu-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=${TZ}
+    volumes:
+      - ${VOL_POSTGRES}:/var/lib/postgresql/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "io.containers.autoupdate=image"
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE}
+    container_name: pikachu-redis
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - ${VOL_REDIS}:/data:Z
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "io.containers.autoupdate=image"
+    restart: unless-stopped
+
+  n8n:
+    image: ${N8N_IMAGE}
+    container_name: pikachu-n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - TZ=${TZ}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Redis available if you later move to queue mode
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+
+      - NODE_OPTIONS=--max-old-space-size=${N8N_MAX_OLD_SPACE_SIZE}
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - ${VOL_N8N}:/home/node/.n8n:Z
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+      - "io.containers.autoupdate=image"
+    restart: unless-stopped
+
+  # http->https redirect
+  redirect:
+    image: ${TRAEFIK_IMAGE}
+    container_name: pikachu-redirect
+    command: ["sh", "-c", "sleep infinity"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    restart: unless-stopped
+
+volumes:
+  pikachu_pgdata:
+    name: ${VOL_POSTGRES}
+  pikachu_n8n_data:
+    name: ${VOL_N8N}
+  pikachu_redis_data:
+    name: ${VOL_REDIS}
+  pikachu_traefik_acme:
+    name: ${VOL_TRAEFIK_ACME}
