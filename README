@@ -1,3 +1,6 @@
+Here’s the full **README.md** in clean GitHub-flavored Markdown format, ready for you to copy into your repository:
+
+```markdown
 # Pikachu n8n (Podman, rootless) + Postgres + Redis + Caddy (Let's Encrypt)
 
 Production-grade n8n automation platform running on rootless Podman with automatic SSL certificates, encrypted backups, and simple Caddy reverse-proxying.
@@ -87,10 +90,10 @@ rclone config
 
 **Expected output from verify.sh:**
 
-- ✅ All containers running
-- ✅ Postgres accepting connections
-- ✅ Redis responding to PING
-- ✅ n8n web interface accessible
+- ✅ All containers running  
+- ✅ Postgres accepting connections  
+- ✅ Redis responding to PING  
+- ✅ n8n web interface accessible  
 
 ### 6. Access Your Services
 
@@ -100,9 +103,9 @@ rclone config
 
 **First-time setup:**
 
-1. Navigate to https://n8n.kamleshmerugu.me
-2. Create your admin account
-3. Start building workflows!
+1. Navigate to https://n8n.kamleshmerugu.me  
+2. Create your admin account  
+3. Start building workflows!  
 
 ---
 
@@ -118,15 +121,15 @@ Run manual backup:
 
 **What gets backed up:**
 
-- Postgres database dump (compressed)
-- n8n data directory
-- Redis persistence files
-- Caddy certificates
-- Encrypted and uploaded to pCloud; the local encrypted file is removed after upload
+- Postgres database dump (compressed)  
+- n8n data directory  
+- Redis persistence files  
+- Caddy certificates  
+- Encrypted and uploaded to pCloud; the local encrypted file is removed after upload  
 
-**Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)
+**Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)  
 
-**Retention:** Remote backups older than 7 days are pruned automatically after each run.
+**Retention:** Remote backups older than 7 days are pruned automatically after each run.  
 
 ### Restoring from Backup
 
@@ -165,12 +168,12 @@ podman auto-update
 
 **How it works:**
 
-- Containers are labeled with `io.containers.autoupdate=image`
-- Timer checks daily for new images
-- If updates found, containers are automatically recreated
-- Systemd integration ensures services restart properly
+- Containers are labeled with `io.containers.autoupdate=image`  
+- Timer checks daily for new images  
+- If updates found, containers are automatically recreated  
+- Systemd integration ensures services restart properly  
 
-**Update policy:** Conservative - only pulls updates for same tag (e.g., `stable` stays on `stable`)
+**Update policy:** Conservative - only pulls updates for same tag (e.g., `stable` stays on `stable`)  
 
 ---
 
@@ -304,20 +307,20 @@ df -h
 
 ## 🛡️ Security Considerations
 
-- **Rootless Podman:** All containers run as non-root user
-- **Encrypted backups:** All backups encrypted before cloud upload
-- **Secret management:** Sensitive data stored in `.env` (chmod 600)
-- **HTTPS only:** Let's Encrypt certificates via Caddy
-- **Network isolation:** Containers communicate via dedicated Podman network
+- **Rootless Podman:** All containers run as non-root user  
+- **Encrypted backups:** All backups encrypted before cloud upload  
+- **Secret management:** Sensitive data stored in `.env` (chmod 600)  
+- **HTTPS only:** Let's Encrypt certificates via Caddy  
+- **Network isolation:** Containers communicate via dedicated Podman network  
 
 ---
 
 ## 📚 Additional Resources
 
-- [n8n Documentation](https://docs.n8n.io/)
-- [Podman Documentation](https://docs.podman.io/)
-- [Caddy Documentation](https://caddyserver.com/docs/)
-- [rclone Documentation](https://rclone.org/docs/)
+- [n8n Documentation](https://docs.n8n.io/)  
+- [Podman Documentation](https://docs.podman.io/)  
+- [Caddy Documentation](https://caddyserver.com/docs/)  
+- [rclone Documentation](https://rclone.org/docs/)  
 
 ---
 
@@ -325,10 +328,12 @@ df -h
 
 This setup configuration is provided as-is for personal and commercial use.
 
+---
+
 ## 🤝 Support
 
 For issues or questions:
 
-1. Check the troubleshooting section above
-2. Review container logs: `podman logs <container-name>`
-3. Verify configuration: `./scripts/verify.sh`
+1. Check the troubleshooting section above  
+2. Review container logs: `podman logs <container-name>`  
+3. Verify configuration: `./scripts/verify.sh`  
