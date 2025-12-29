@@ -1,4 +1,9 @@
+# Local configuration
+.env
+
+# Backup artifacts (if BACKUP_DIR points inside the repo)
 *.gpg
+*.tar.gz
 /work-*
 /restore-work-*
-.env
+/backups-n8n/
