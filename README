@@ -1,4 +1,4 @@
-Here’s the full **README.md** in clean GitHub-flavored Markdown format, ready for you to copy into your repository:
+Here’s your updated `README.md` file in full GitHub-flavored Markdown, ready to paste directly into your repository:
 
 ```markdown
 # Pikachu n8n (Podman, rootless) + Postgres + Redis + Caddy (Let's Encrypt)
@@ -11,13 +11,8 @@ Production-grade n8n automation platform running on rootless Podman with automat
 
 ### 1. Set Your User ID
 
-First, determine your user ID and configure it in `.env`:
-
 ```bash
-# Get your user ID
 id -u
-
-# Edit .env and set PODMAN_UID (and other values) to the value above
 cp .env.example .env
 nano .env
 ```
@@ -25,193 +20,111 @@ nano .env
 **Example `.env` snippet:**
 
 ```bash
-PODMAN_UID=1000  # Replace with your actual UID
+PODMAN_UID=1000
 N8N_ENCRYPTION_KEY=generate-a-long-random-secret
 POSTGRES_PASSWORD=strong-db-password
 BACKUP_PASSPHRASE=strong-backup-passphrase
 RCLONE_REMOTE=pcloud-crypt
 RCLONE_REMOTE_PATH=backups-n8n
 BACKUP_DIR=/srv/backups-n8n
-# Caddy volumes (data must be backed up)
 VOL_CADDY_DATA=caddy_data
 VOL_CADDY_CONFIG=caddy_config
 ```
 
 ### 2. Protect Your .env
 
-All secrets live in `.env`. Lock it down:
-
 ```bash
 chmod 600 .env
 ```
 
-**⚠️ Critical:** Ensure `N8N_ENCRYPTION_KEY` is long, random, and stored safely forever (losing this key means losing encrypted workflow credentials).
+> ⚠️ Ensure `N8N_ENCRYPTION_KEY` is long, random, and stored safely forever.
 
-### 3. Install Dependencies and Prepare Environment
+### 3. Install Dependencies
 
 ```bash
 cd /code/pikachu
-
-# Make scripts executable
 chmod +x scripts/*.sh
-
-# Run installation script (primes backups, installs helpers)
 ./scripts/install-rootless.sh
 ```
 
-### 4. Configure Encrypted Cloud Backup (Optional but Recommended)
-
-Set up rclone for encrypted backups to pCloud:
+### 4. Configure Encrypted Cloud Backup (Optional)
 
 ```bash
 rclone config
-
-# Follow the prompts to:
-# 1. Create "pcloud" remote (OAuth-based pCloud connection)
-# 2. Create "pcloud-crypt" remote (crypt layer over pcloud)
 ```
 
-**Backup configuration details:**
-
-- **Remote name:** `pcloud-crypt`
-- **Type:** `crypt`
-- **Remote:** `pcloud:/backups-n8n`
-- **Encryption:** Standard (recommended)
+- Create `pcloud` remote (OAuth)
+- Create `pcloud-crypt` remote (crypt layer)
 
 ### 5. Start the Stack
 
 ```bash
-# Bring up all containers
 ./scripts/up.sh
-
-# Verify everything is running correctly
 ./scripts/verify.sh
 ```
 
-**Expected output from verify.sh:**
-
-- ✅ All containers running  
-- ✅ Postgres accepting connections  
-- ✅ Redis responding to PING  
-- ✅ n8n web interface accessible  
-
 ### 6. Access Your Services
 
-**Main Service:**
-
 - **n8n Automation:** https://n8n.kamleshmerugu.me
-
-**First-time setup:**
-
-1. Navigate to https://n8n.kamleshmerugu.me  
-2. Create your admin account  
-3. Start building workflows!  
 
 ---
 
 ## 💾 Backup & Restore
 
-### Creating Backups
-
-Run manual backup:
+### Manual Backup
 
 ```bash
 ./scripts/backup.sh
 ```
 
-**What gets backed up:**
+Backs up:
 
-- Postgres database dump (compressed)  
-- n8n data directory  
-- Redis persistence files  
-- Caddy certificates  
-- Encrypted and uploaded to pCloud; the local encrypted file is removed after upload  
+- Postgres dump
+- n8n data
+- Redis files
+- Caddy certs
 
-**Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)  
+Encrypted and uploaded to pCloud. Local file removed.
 
-**Retention:** Remote backups older than 7 days are pruned automatically after each run.  
-
-### Restoring from Backup
+### Restore Backup
 
 ```bash
-# List available backups (remote)
 rclone ls pcloud-crypt:backups-n8n
-
-# Restore specific backup (pass timestamp or full filename)
 ./scripts/restore.sh <TIMESTAMP>
-
-# Example:
-./scripts/restore.sh 28-01-2025.14:30:22
-
-# Verify restoration
 ./scripts/verify.sh
 ```
 
-**⚠️ Restore Warning:** Restoration will overwrite current data. Ensure you have a recent backup before major changes.
+> ⚠️ Restoration overwrites current data.
 
 ---
 
 ## 🔄 Automatic Container Updates
 
-Enable automatic image updates using Podman's native auto-update feature:
-
 ```bash
-# Enable auto-update timer (checks daily)
 systemctl --user enable --now podman-auto-update.timer
-
-# Check timer status
 systemctl --user list-timers | grep podman-auto-update
-
-# Manual update check
 podman auto-update
 ```
 
-**How it works:**
-
-- Containers are labeled with `io.containers.autoupdate=image`  
-- Timer checks daily for new images  
-- If updates found, containers are automatically recreated  
-- Systemd integration ensures services restart properly  
-
-**Update policy:** Conservative - only pulls updates for same tag (e.g., `stable` stays on `stable`)  
+- Uses `io.containers.autoupdate=image`
+- Conservative tag policy (e.g., `stable`)
 
 ---
 
 ## 📋 Setup Checklist
 
-Run this complete setup from the server:
-
 ```bash
 cd /code/pikachu
-
-# ✅ Step 1: Set correct UID
 id -u
-# Edit .env and set PODMAN_UID to that number (and all secrets)
 cp .env.example .env
 nano .env
-
-# ✅ Step 2: Secure .env (contains secrets)
 chmod 600 .env
-
-# ✅ Step 3: Install and prepare environment
 ./scripts/install-rootless.sh
-
-# ✅ Step 4: Configure rclone (optional but recommended)
 rclone config
-
-# ✅ Step 5: Bring up the stack
 ./scripts/up.sh
-
-# ✅ Step 6: Verify everything works
 ./scripts/verify.sh
-
-# ✅ Step 7: Enable auto-updates (optional)
 systemctl --user enable --now podman-auto-update.timer
-
-# ✅ Step 8: Test backup
 ./scripts/backup.sh
-
-# ✅ Step 9: Access your n8n instance
 echo "Visit: https://n8n.kamleshmerugu.me"
 ```
 
@@ -221,85 +134,66 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 
 ```
 /code/pikachu/
-├── README.md                    # This file
-├── .env.example                 # Sample configuration
-├── .env                         # Configuration + secrets (chmod 600)
-├── podman-compose.yml           # Podman Compose definition
-├── Caddyfile                    # Caddy reverse proxy + TLS
+├── README.md
+├── .env.example
+├── .env
+├── podman-compose.yml
+├── Caddyfile
 ├── scripts/
-│   ├── install-rootless.sh      # Initial setup script
-│   ├── up.sh                    # Start all containers
-│   ├── down.sh                  # Stop all containers
-│   ├── verify.sh                # Health check script
-│   ├── backup.sh                # Backup script
-│   └── restore.sh               # Restore script
-├── data/                        # Container volumes (auto-created)
+│   ├── install-rootless.sh
+│   ├── up.sh
+│   ├── down.sh
+│   ├── verify.sh
+│   ├── backup.sh
+│   └── restore.sh
+├── data/
 │   ├── n8n/
 │   ├── postgres/
 │   └── redis/
-└── backups-n8n/                 # Local staging for backup/restore (auto-created)
+└── backups-n8n/
 ```
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Containers won't start
+### Containers Won’t Start
 
 ```bash
-# Check container logs
 podman logs n8n
 podman logs postgres
 podman logs caddy
-
-# Check if ports are already in use
 ss -tulpn | grep -E ':(80|443|5432|6379)'
-
-# Verify pod is running
 podman pod ps
 ```
 
-### SSL certificate issues
+### SSL Issues
 
 ```bash
-# Check Caddy logs
 podman logs caddy
-
-# Verify DNS is pointing correctly and ports 80/443 are reachable
 dig n8n.kamleshmerugu.me
 curl -I http://n8n.kamleshmerugu.me
 ```
 
-### Database connection errors
+### Database Errors
 
 ```bash
-# Test Postgres connection (adjust if you changed user/db)
 podman exec -it postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
-
-# Check if password matches in .env
 grep POSTGRES_PASSWORD .env
 ```
 
-### Permission denied errors
+### Permission Denied
 
 ```bash
-# Verify ownership of data directories
 ls -la data/
-
-# Fix ownership if needed
 podman unshare chown -R 1000:1000 data/
 ```
 
-### Backup/restore failures
+### Backup Failures
 
 ```bash
-# Test rclone connection
 rclone ls pcloud-crypt:
-
-# Verify encryption key is correct
 grep N8N_ENCRYPTION_KEY .env
-
-# Check available disk space
 df -h
 ```
 
@@ -307,33 +201,31 @@ df -h
 
 ## 🛡️ Security Considerations
 
-- **Rootless Podman:** All containers run as non-root user  
-- **Encrypted backups:** All backups encrypted before cloud upload  
-- **Secret management:** Sensitive data stored in `.env` (chmod 600)  
-- **HTTPS only:** Let's Encrypt certificates via Caddy  
-- **Network isolation:** Containers communicate via dedicated Podman network  
+- Rootless Podman
+- Encrypted backups
+- Secrets in `.env`
+- HTTPS via Caddy
+- Isolated Podman network
 
 ---
 
-## 📚 Additional Resources
+## 📚 Resources
 
-- [n8n Documentation](https://docs.n8n.io/)  
-- [Podman Documentation](https://docs.podman.io/)  
-- [Caddy Documentation](https://caddyserver.com/docs/)  
-- [rclone Documentation](https://rclone.org/docs/)  
+- [n8n Docs](https://docs.n8n.io/)
+- [Podman Docs](https://docs.podman.io/)
+- [Caddy Docs](https://caddyserver.com/docs/)
+- [rclone Docs](https://rclone.org/docs/)
 
 ---
 
 ## 📝 License
 
-This setup configuration is provided as-is for personal and commercial use.
+Provided as-is for personal and commercial use.
 
 ---
 
 ## 🤝 Support
 
-For issues or questions:
-
-1. Check the troubleshooting section above  
-2. Review container logs: `podman logs <container-name>`  
-3. Verify configuration: `./scripts/verify.sh`  
+- Check troubleshooting section  
+- Review logs: `podman logs <container-name>`  
+- Run: `./scripts/verify.sh`
