@@ -1,6 +1,3 @@
-Here’s your updated `README.md` file in full GitHub-flavored Markdown, ready to paste directly into your repository:
-
-```markdown
 # Pikachu n8n (Podman, rootless) + Postgres + Redis + Caddy (Let's Encrypt)
 
 Production-grade n8n automation platform running on rootless Podman with automatic SSL certificates, encrypted backups, and simple Caddy reverse-proxying.
