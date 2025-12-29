@@ -1,3 +1,4 @@
 *.gpg
 /work-*
 /restore-work-*
+.env
