@@ -19,11 +19,21 @@ CERTS_VOL="${VOL_CADDY_DATA:?Set VOL_CADDY_DATA in .env}"
 BACKUP_DIR="${BACKUP_DIR:?Set BACKUP_DIR in .env}"
 REMOTE_PATH="${RCLONE_REMOTE_PATH%/}"
 
-TS="${1:-}"
-if [[ -z "$TS" ]]; then
+BASENAME="${1:-}"
+if [[ -z "$BASENAME" ]]; then
   echo "ERROR: Provide backup timestamp."
   echo "Example: ./scripts/restore.sh 28-01-2025.14:30:22"
+  echo "Or full filename: ./scripts/restore.sh n8n-28-01-2025.14:30:22.tar.gz.gpg"
   exit 1
+fi
+# Allow passing full filename; strip leading path and expected prefix/suffix
+BASENAME="${BASENAME##*/}"
+if [[ "${BASENAME}" =~ ^n8n-(.*)\.tar\.gz\.gpg$ ]]; then
+  TS="${BASH_REMATCH[1]}"
+elif [[ "${BASENAME}" == n8n-* ]]; then
+  TS="${BASENAME#n8n-}"
+else
+  TS="${BASENAME}"
 fi
 
 ENCRYPTED_NAME="n8n-${TS}.tar.gz.gpg"
