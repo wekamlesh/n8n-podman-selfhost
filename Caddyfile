@@ -10,7 +10,7 @@ n8n.kamleshmerugu.me {
 	encode gzip zstd
 
 	# Reverse proxy to n8n container on internal network
-	reverse_proxy pikachu-n8n:5678
+	reverse_proxy n8n:5678
 
 	# Basic security headers (safe defaults)
 	header {

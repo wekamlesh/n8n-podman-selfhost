@@ -1,7 +1,7 @@
 services:
   caddy:
     image: ${CADDY_IMAGE}
-    container_name: pikachu-caddy
+    container_name: caddy
     ports:
       - "80:80"
       - "443:443"
@@ -11,13 +11,13 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Caddy stores certs here (IMPORTANT: include in backups)
-      - pikachu_caddy_data:/data:Z
-      - pikachu_caddy_config:/config:Z
+      - ${VOL_CADDY_DATA}:/data:Z
+      - ${VOL_CADDY_CONFIG}:/config:Z
     restart: unless-stopped
 
   postgres:
     image: ${POSTGRES_IMAGE}
-    container_name: pikachu-postgres
+    container_name: postgres
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -35,7 +35,7 @@ services:
   redis:
     # I'd strongly recommend Redis 7; but keeping your env var as-is
     image: ${REDIS_IMAGE}
-    container_name: pikachu-redis
+    container_name: redis
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
     volumes:
       - ${VOL_REDIS}:/data:Z
@@ -48,7 +48,7 @@ services:
 
   n8n:
     image: ${N8N_IMAGE}
-    container_name: pikachu-n8n
+    container_name: n8n
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,14 +81,13 @@ services:
     restart: unless-stopped
 
 volumes:
-  pikachu_caddy_data:
-    name: pikachu_caddy_data
-  pikachu_caddy_config:
-    name: pikachu_caddy_config
-
-  pikachu_pgdata:
+  caddy_data:
+    name: ${VOL_CADDY_DATA}
+  caddy_config:
+    name: ${VOL_CADDY_CONFIG}
+  pgdata:
     name: ${VOL_POSTGRES}
-  pikachu_n8n_data:
+  n8n_data:
     name: ${VOL_N8N}
-  pikachu_redis_data:
+  redis_data:
     name: ${VOL_REDIS}

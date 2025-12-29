@@ -26,9 +26,10 @@ N8N_ENCRYPTION_KEY=generate-a-long-random-secret
 POSTGRES_PASSWORD=strong-db-password
 BACKUP_PASSPHRASE=strong-backup-passphrase
 RCLONE_REMOTE=pcloud-crypt
-RCLONE_REMOTE_PATH=backups/n8n
-# Set VOL_TRAEFIK_ACME to your Caddy data volume so certs are backed up:
-VOL_TRAEFIK_ACME=pikachu_caddy_data
+RCLONE_REMOTE_PATH=backups-n8n/
+# Caddy volumes (data must be backed up)
+VOL_CADDY_DATA=caddy_data
+VOL_CADDY_CONFIG=caddy_config
 ```
 
 ### 2. Protect Your .env
@@ -68,7 +69,7 @@ rclone config
 **Backup configuration details:**
 - **Remote name:** `pcloud-crypt`
 - **Type:** `crypt`
-- **Remote:** `pcloud:/backups/pikachu-n8n`
+- **Remote:** `pcloud:/backups-n8n/`
 - **Encryption:** Standard (recommended)
 
 ### 5. Start the Stack
@@ -116,19 +117,19 @@ Run manual backup:
 - Configuration files
 - Encrypted and uploaded to pCloud
 
-**Backup naming:** `backup-YYYY-MM-DD-HHMMSS.tar.gz.enc`
+**Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)
 
 ### Restoring from Backup
 
 ```bash
 # List available backups
-rclone ls pcloud-crypt:
+rclone ls pcloud-crypt:backups-n8n/
 
 # Restore specific backup
 ./scripts/restore.sh <TIMESTAMP>
 
 # Example:
-./scripts/restore.sh 2025-01-28-143022
+./scripts/restore.sh 28-01-2025.14:30:22
 
 # Verify restoration
 ./scripts/verify.sh
@@ -208,6 +209,7 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 ```
 /code/pikachu/
 ├── README                       # This file
+├── .env.example                 # Sample configuration
 ├── .env                         # Configuration + secrets (chmod 600)
 ├── podman-compose.yml           # Podman Compose definition
 ├── Caddyfile                    # Caddy reverse proxy + TLS
@@ -222,7 +224,7 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 │   ├── n8n/
 │   ├── postgres/
 │   └── redis/
-└── backups/                     # Local backup staging (auto-created)
+└── backups-n8n/                 # Local backup staging (auto-created)
 ```
 
 ---
@@ -233,9 +235,9 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 
 ```bash
 # Check container logs
-podman logs pikachu-n8n
-podman logs pikachu-postgres
-podman logs pikachu-caddy
+podman logs n8n
+podman logs postgres
+podman logs caddy
 
 # Check if ports are already in use
 ss -tulpn | grep -E ':(80|443|5432|6379)'
@@ -248,7 +250,7 @@ podman pod ps
 
 ```bash
 # Check Caddy logs
-podman logs pikachu-caddy
+podman logs caddy
 
 # Verify DNS is pointing correctly and ports 80/443 are reachable
 dig n8n.kamleshmerugu.me
@@ -259,7 +261,7 @@ curl -I http://n8n.kamleshmerugu.me
 
 ```bash
 # Test Postgres connection (adjust if you changed user/db)
-podman exec -it pikachu-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
+podman exec -it postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"
 
 # Check if password matches in .env
 grep POSTGRES_PASSWORD .env
