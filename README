@@ -20,13 +20,15 @@ nano .env
 ```
 
 **Example `.env` snippet:**
+
 ```bash
 PODMAN_UID=1000  # Replace with your actual UID
 N8N_ENCRYPTION_KEY=generate-a-long-random-secret
 POSTGRES_PASSWORD=strong-db-password
 BACKUP_PASSPHRASE=strong-backup-passphrase
 RCLONE_REMOTE=pcloud-crypt
-RCLONE_REMOTE_PATH=backups-n8n/
+RCLONE_REMOTE_PATH=backups-n8n
+BACKUP_DIR=/srv/backups-n8n
 # Caddy volumes (data must be backed up)
 VOL_CADDY_DATA=caddy_data
 VOL_CADDY_CONFIG=caddy_config
@@ -67,9 +69,10 @@ rclone config
 ```
 
 **Backup configuration details:**
+
 - **Remote name:** `pcloud-crypt`
 - **Type:** `crypt`
-- **Remote:** `pcloud:/backups-n8n/`
+- **Remote:** `pcloud:/backups-n8n`
 - **Encryption:** Standard (recommended)
 
 ### 5. Start the Stack
@@ -83,6 +86,7 @@ rclone config
 ```
 
 **Expected output from verify.sh:**
+
 - ✅ All containers running
 - ✅ Postgres accepting connections
 - ✅ Redis responding to PING
@@ -91,9 +95,11 @@ rclone config
 ### 6. Access Your Services
 
 **Main Service:**
+
 - **n8n Automation:** https://n8n.kamleshmerugu.me
 
 **First-time setup:**
+
 1. Navigate to https://n8n.kamleshmerugu.me
 2. Create your admin account
 3. Start building workflows!
@@ -111,22 +117,24 @@ Run manual backup:
 ```
 
 **What gets backed up:**
+
 - Postgres database dump (compressed)
 - n8n data directory
 - Redis persistence files
 - Caddy certificates
-- Encrypted and uploaded to pCloud (local encrypted file is removed after upload)
+- Encrypted and uploaded to pCloud; the local encrypted file is removed after upload
 
 **Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)
+
 **Retention:** Remote backups older than 7 days are pruned automatically after each run.
 
 ### Restoring from Backup
 
 ```bash
-# List available backups
-rclone ls pcloud-crypt:backups-n8n/
+# List available backups (remote)
+rclone ls pcloud-crypt:backups-n8n
 
-# Restore specific backup
+# Restore specific backup (pass timestamp or full filename)
 ./scripts/restore.sh <TIMESTAMP>
 
 # Example:
@@ -156,6 +164,7 @@ podman auto-update
 ```
 
 **How it works:**
+
 - Containers are labeled with `io.containers.autoupdate=image`
 - Timer checks daily for new images
 - If updates found, containers are automatically recreated
@@ -209,7 +218,7 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 
 ```
 /code/pikachu/
-├── README                       # This file
+├── README.md                    # This file
 ├── .env.example                 # Sample configuration
 ├── .env                         # Configuration + secrets (chmod 600)
 ├── podman-compose.yml           # Podman Compose definition
@@ -225,7 +234,7 @@ echo "Visit: https://n8n.kamleshmerugu.me"
 │   ├── n8n/
 │   ├── postgres/
 │   └── redis/
-└── backups-n8n/                 # Local backup staging (auto-created)
+└── backups-n8n/                 # Local staging for backup/restore (auto-created)
 ```
 
 ---
@@ -319,11 +328,7 @@ This setup configuration is provided as-is for personal and commercial use.
 ## 🤝 Support
 
 For issues or questions:
+
 1. Check the troubleshooting section above
 2. Review container logs: `podman logs <container-name>`
 3. Verify configuration: `./scripts/verify.sh`
-
----
-
-**Last Updated:** 2025-01-28  
-**Maintainer:** Kamlesh Merugu
