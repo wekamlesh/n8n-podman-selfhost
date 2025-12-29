@@ -17,6 +17,7 @@ REDIS_VOL="${VOL_REDIS:?Set VOL_REDIS in .env}"
 POSTGRES_VOL="${VOL_POSTGRES:?Set VOL_POSTGRES in .env}"
 CERTS_VOL="${VOL_CADDY_DATA:?Set VOL_CADDY_DATA in .env}"
 BACKUP_DIR="${BACKUP_DIR:?Set BACKUP_DIR in .env}"
+REMOTE_PATH="${RCLONE_REMOTE_PATH%/}"
 
 TS="${1:-}"
 if [[ -z "$TS" ]]; then
@@ -27,7 +28,8 @@ fi
 
 ENCRYPTED_NAME="n8n-${TS}.tar.gz.gpg"
 LOCAL_ENC="${BACKUP_DIR}/${ENCRYPTED_NAME}"
-WORKDIR="${BACKUP_DIR}/restore-work-${TS}"
+SAFE_TS="${TS//:/-}"
+WORKDIR="${BACKUP_DIR}/restore-work-${SAFE_TS}"
 
 mkdir -p "${WORKDIR}"
 if [[ ! -w "${WORKDIR}" ]]; then
@@ -36,7 +38,7 @@ if [[ ! -w "${WORKDIR}" ]]; then
 fi
 
 echo "[1/9] Download from pCloud..."
-rclone copy "${RCLONE_REMOTE}:${RCLONE_REMOTE_PATH}/${ENCRYPTED_NAME}" "${BACKUP_DIR}" --progress
+rclone copy "${RCLONE_REMOTE}:${REMOTE_PATH}/${ENCRYPTED_NAME}" "${BACKUP_DIR}" --progress
 
 echo "[2/9] Decrypt..."
 DECRYPTED="${WORKDIR}/bundle.tar.gz"
@@ -53,7 +55,7 @@ if [[ ! -f "${CERT_ARCHIVE}" ]]; then
 fi
 
 echo "[4/9] Stop stack..."
-podman-compose --env-file .env down
+podman-compose down
 
 echo "[5/9] Recreate volumes (wipe old data safely)..."
 podman volume rm -f "${N8N_VOL}" "${REDIS_VOL}" "${POSTGRES_VOL}" "${CERTS_VOL}" || true
@@ -68,7 +70,7 @@ podman volume import "${REDIS_VOL}" "${WORKDIR}/redis-volume.tar"
 podman volume import "${CERTS_VOL}" "${CERT_ARCHIVE}"
 
 echo "[7/9] Start postgres only..."
-podman-compose --env-file .env up -d postgres
+podman-compose up -d postgres
 sleep 10
 
 echo "[8/9] Restore Postgres dump..."
@@ -83,6 +85,6 @@ podman exec -i postgres pg_restore \
   < "${WORKDIR}/postgres.dump"
 
 echo "[9/9] Start full stack..."
-podman-compose --env-file .env up -d
+podman-compose up -d
 
 echo "Restore complete. Run: ./scripts/verify.sh"

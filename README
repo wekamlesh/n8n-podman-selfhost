@@ -114,10 +114,11 @@ Run manual backup:
 - Postgres database dump (compressed)
 - n8n data directory
 - Redis persistence files
-- Configuration files
-- Encrypted and uploaded to pCloud
+- Caddy certificates
+- Encrypted and uploaded to pCloud (local encrypted file is removed after upload)
 
 **Backup naming:** `n8n-DD-MM-YYYY.HH:MM:SS.tar.gz.gpg` (UTC)
+**Retention:** Remote backups older than 7 days are pruned automatically after each run.
 
 ### Restoring from Backup
 

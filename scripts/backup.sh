@@ -11,6 +11,7 @@ fi
 set -a
 source .env
 set +a
+REMOTE_PATH="${RCLONE_REMOTE_PATH%/}"
 
 ensure_backup_dir() {
   if [[ ! -d "${BACKUP_DIR}" ]]; then
@@ -34,7 +35,8 @@ podman volume inspect "${REDIS_VOL}" >/dev/null
 podman volume inspect "${CERTS_VOL}" >/dev/null
 
 TS="$(date -u +"%d-%m-%Y.%H:%M:%S")"
-WORKDIR="${BACKUP_DIR}/work-${TS}"
+SAFE_TS="${TS//:/-}"
+WORKDIR="${BACKUP_DIR}/work-${SAFE_TS}"
 BUNDLE="${BACKUP_DIR}/n8n-${TS}.tar.gz"
 ENCRYPTED="${BUNDLE}.gpg"
 CERT_ARCHIVE="${WORKDIR}/caddy-certs-volume.tar"
@@ -69,6 +71,11 @@ rm -f "${BUNDLE}"
 rm -rf "${WORKDIR}"
 
 echo "[7/7] Upload to pCloud via rclone..."
-rclone copy "${ENCRYPTED}" "${RCLONE_REMOTE}:${RCLONE_REMOTE_PATH}" --progress
+rclone copy "${ENCRYPTED}" "${RCLONE_REMOTE}:${REMOTE_PATH}" --progress
+echo "[7b/7] Prune remote backups older than 7 days..."
+rclone delete "${RCLONE_REMOTE}:${REMOTE_PATH}" --min-age 7d --progress
+
+# Remove local encrypted artifact; staging data already removed
+rm -f "${ENCRYPTED}"
 
 echo "Backup complete: ${ENCRYPTED}"
