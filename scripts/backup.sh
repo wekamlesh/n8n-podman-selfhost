@@ -77,5 +77,3 @@ rclone delete "${RCLONE_REMOTE}:${REMOTE_PATH}" --min-age 7d --progress
 
 # Remove local encrypted artifact; staging data already removed
 rm -f "${ENCRYPTED}"
-
-echo "Backup complete: ${ENCRYPTED}"
