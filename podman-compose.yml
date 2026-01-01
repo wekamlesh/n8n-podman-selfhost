@@ -76,6 +76,7 @@ services:
 
       - NODE_OPTIONS=--max-old-space-size=${N8N_MAX_OLD_SPACE_SIZE}
       - N8N_DIAGNOSTICS_ENABLED=false
+      - GENERIC_TIMEZONE=${TZ}
     volumes:
       - ${VOL_N8N}:/home/node/.n8n:Z
     restart: unless-stopped
