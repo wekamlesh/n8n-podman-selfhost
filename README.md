@@ -37,10 +37,22 @@ chmod 600 .env
 ```bash
 cd /path/to/project
 chmod +x scripts/*.sh
-./scripts/install-rootless.sh
+./scripts/install.sh
 ```
 
-### 4. Configure Encrypted Cloud Backup (Optional)
+### 4. Allow rootless Caddy to bind 80/443 (once per host)
+```bash
+sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
+echo 'net.ipv4.ip_unprivileged_port_start=0' | sudo tee /etc/sysctl.d/99-rootless-ports.conf
+sudo sysctl --system
+```
+
+### 5. Ensure the shared network exists (once per host)
+```bash
+podman network create --driver bridge --label dns.podman=1 shared-network || true
+```
+
+### 6. Configure Encrypted Cloud Backup (Optional)
 ```bash
 rclone config
 ```
@@ -48,14 +60,14 @@ rclone config
 - Create cloud remote (OAuth)
 - Create crypt layer remote
 
-### 5. Start the Stack
+### 7. Start the Stack
 ```bash
 ./scripts/up.sh
 ./scripts/verify.sh
 ```
 
-### 6. Access Your Services
-- **n8n Automation:** https://your-domain.com
+### 8. Access Your Services
+- **n8n Automation:** https://${N8N_HOST}
 
 ---
 
@@ -111,7 +123,12 @@ id -u
 cp .env.example .env
 nano .env
 chmod 600 .env
-./scripts/install-rootless.sh
+chmod +x scripts/*.sh
+./scripts/install.sh
+sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
+echo 'net.ipv4.ip_unprivileged_port_start=0' | sudo tee /etc/sysctl.d/99-rootless-ports.conf
+sudo sysctl --system
+podman network create --driver bridge --label dns.podman=1 shared-network || true
 rclone config
 ./scripts/up.sh
 ./scripts/verify.sh
@@ -156,6 +173,22 @@ podman logs postgres
 podman logs caddy
 ss -tulpn | grep -E ':(80|443|5432|6379)'
 podman pod ps
+```
+
+### Database/Redis `EHOSTUNREACH` inside n8n
+- Refresh DNS records on the shared network:
+```bash
+podman network reload shared-network
+podman-compose down
+podman-compose up -d
+podman exec n8n getent hosts postgres redis
+```
+- If stale entries remain, recreate the network:
+```bash
+podman-compose down
+podman network rm shared-network
+podman network create --driver bridge --label dns.podman=1 shared-network
+podman-compose up -d
 ```
 
 ### SSL Issues

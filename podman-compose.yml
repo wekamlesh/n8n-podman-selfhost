@@ -14,6 +14,9 @@ services:
       - ${VOL_CADDY_DATA}:/data:Z
       - ${VOL_CADDY_CONFIG}:/config:Z
     restart: unless-stopped
+    networks:
+      - shared-network
+    
 
   postgres:
     image: ${POSTGRES_IMAGE}
@@ -31,6 +34,8 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    networks:
+      - shared-network
 
   redis:
     # I'd strongly recommend Redis 7; but keeping your env var as-is
@@ -45,6 +50,8 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    networks:
+      - shared-network
 
   n8n:
     image: ${N8N_IMAGE}
@@ -80,6 +87,8 @@ services:
     volumes:
       - ${VOL_N8N}:/home/node/.n8n:Z
     restart: unless-stopped
+    networks:
+      - shared-network
 
 volumes:
   caddy_data:
@@ -92,3 +101,7 @@ volumes:
     name: ${VOL_N8N}
   redis_data:
     name: ${VOL_REDIS}
+
+networks:
+  shared-network:
+    external: true

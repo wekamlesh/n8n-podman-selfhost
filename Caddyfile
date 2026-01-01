@@ -19,3 +19,18 @@ n8n.kamleshmerugu.me {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 }
+
+
+portainer.kamleshmerugu.me {
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	reverse_proxy portainer:9000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-For {remote}
+	}
+}
