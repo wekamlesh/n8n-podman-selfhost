@@ -37,7 +37,7 @@ podman volume inspect "${N8N_VOL}" >/dev/null
 podman volume inspect "${REDIS_VOL}" >/dev/null
 podman volume inspect "${CERTS_VOL}" >/dev/null
 
-TS="$(date -u +"%d-%m-%Y.%H:%M:%S")"
+TS="$(date +"%d-%m-%Y.%H:%M:%S")"
 SAFE_TS="${TS//:/-}"
 WORKDIR="${BACKUP_DIR}/work-${SAFE_TS}"
 BUNDLE="${BACKUP_DIR}/n8n-${TS}.tar.gz"
